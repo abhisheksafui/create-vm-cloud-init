@@ -21,8 +21,8 @@ The folowing variables are mandatory:
   - vm_vcpus: 8
   - mgmt_if_name: mgmt
   - mgmt_if_mac: 02:0d:80:45:00:01
-  - username: abhi
-  - password: abhi123
+  - username: cloud
+  - password: password
   - disk_pool: default
   - disk_name: vm-ubuntu-1.qcow2
   - network_config_version: 2
@@ -49,8 +49,8 @@ Including an example of how to use your role (for instance, with variables passe
         - vm_vcpus: 8
         - mgmt_if_name: mgmt
         - mgmt_if_mac: 02:0d:80:45:00:01
-        - username: abhi
-        - password: abhi123
+        - username: cloud
+        - password: password
         - disk_pool: default
         - disk_name: vm-ubuntu-1.qcow2
         - network_config_version: 2
