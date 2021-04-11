@@ -1,0 +1,111 @@
+---
+  - name: Check VM existance
+    shell: virsh list --all | grep {{ vm_name }}
+    ignore_errors: yes
+    register: exists_check
+
+  - name: "Installing VM" 
+    block:
+
+    - name: Ensure VM Image directory structure
+      file: >
+        path={{ vm_dir }}
+        recurse=yes
+        state=directory
+
+    - name: Create ssh key
+      shell: |
+        mkdir -p {{ vm_dir }}/ssh_key
+        ssh-keygen -t rsa -b 4096 -C {{username}}@{{ vm_name }} -f {{ vm_dir }}/ssh_key/id_rsa -q -N ""
+      args: 
+        creates: "{{ vm_dir }}/ssh_key/id_rsa"
+      
+    - shell:  cat {{ vm_dir }}/ssh_key/id_rsa.pub
+      register: id_rsa_pub
+
+
+    - name: Create user-data file with username and password as mentioned in VM variables file
+      shell: |
+        cat > {{ vm_dir }}/user-data<<EOF
+        #cloud-config
+        users:
+          - name: {{ username }}
+            lock_passwd: false
+            plain_text_passwd: {{ password }}
+            ssh-authorized-keys:
+              - {{ id_rsa_pub.stdout }}
+            sudo: ['ALL=(ALL) NOPASSWD:ALL']
+            groups: sudo
+            shell: /bin/bash
+        runcmd:
+          - echo "AllowUsers {{username}}" >> /etc/ssh/sshd_config
+          - systemctl restart sshd.service
+        EOF
+
+      args:
+        creates: "{{ vm_dir }}/user-data"
+
+
+    - name: Create meta-data file
+      shell: |
+        cat > {{ vm_dir }}/meta-data<<EOF
+        local-hostname: {{ vm_name }}
+        EOF
+      
+      args:
+        creates: "{{ vm_dir }}/meta-data"
+    
+    - name: Create network-config file for version 2
+      shell: |
+        cat > {{ vm_dir }}/network-config<<EOF
+        version: 2
+        ethernets:
+          mgmt:
+            match:
+              macaddress: {{ mgmt_if_mac }}
+            set-name: {{ mgmt_if_name }}
+            dhcp4: true
+        EOF
+      args:
+        creates: "{{ vm_dir }}/network-config"
+      when: 
+        - network_config_version|int == 2 
+
+    - name: Create network-config file for version 1
+      shell: |
+        cat > {{ vm_dir }}/network-config<<EOF
+        version: 1
+        config:
+          - type: physical
+            name: {{ mgmt_if_name }}
+            subnets: 
+              - type: dhcp
+        EOF
+      args:
+        creates: "{{ vm_dir }}/network-config"
+      when: 
+        - network_config_version|int == 1
+
+    - name: Generate iso
+      shell: >
+        genisoimage -output {{ vm_dir }}/{{ vm_name }}.iso -volid cidata -joliet -rock
+        {{vm_dir}}/user-data
+        {{vm_dir}}/meta-data
+        {{vm_dir}}/network-config
+      args:
+        creates:  "{{ vm_dir }}/{{ vm_name }}-cidata.iso"
+
+    - name: Install the virtual machine 
+      shell: >
+        virt-install --connect qemu:///system --virt-type kvm
+        --name {{ vm_name }}
+        --ram {{ vm_ram_size }}
+        --vcpus {{ vm_vcpus }}
+        --os-type generic
+        --disk vol={{ disk_pool }}/{{ disk_name }},format=qcow2
+        --disk {{ vm_dir }}/{{ vm_name }}.iso,device=cdrom
+        --import
+        --noautoconsole 
+        --network network=default,mac={{ mgmt_if_mac }}
+    
+    when: exists_check is failed

@@ -1,0 +1,18 @@
+---
+  - name: Install VM from cloud image
+    hosts: localhost
+    
+    roles:
+      role: create-vm-cloud-init
+      vars: 
+        - vm_name: vm-ubuntu-1
+        - vm_dir: /home/pocuser/abhishek/vm-ubuntu-1
+        - vm_ram_size: 8192
+        - vm_vcpus: 8
+        - mgmt_if_name: mgmt
+        - mgmt_if_mac: 02:0d:80:45:00:01
+        - username: abhi
+        - password: abhi123
+        - disk_pool: default
+        - disk_name: vm-ubuntu-1.qcow2
+        - network_config_version: 2
