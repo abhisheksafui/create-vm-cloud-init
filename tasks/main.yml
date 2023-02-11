@@ -97,11 +97,10 @@
 
     - name: Install the virtual machine 
       shell: >
-        virt-install --connect qemu:///system --virt-type kvm
+        virt-install --connect qemu:///system --virt-type kvm 
         --name {{ vm_name }}
         --ram {{ vm_ram_size }}
         --vcpus {{ vm_vcpus }}
-        --os-type generic
         --disk vol={{ disk_pool }}/{{ disk_name }},format=qcow2
         --disk {{ vm_dir }}/{{ vm_name }}.iso,device=cdrom
         --import
